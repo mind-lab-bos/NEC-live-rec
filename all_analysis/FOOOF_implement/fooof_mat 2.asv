@@ -1,0 +1,135 @@
+%% Matlab PreProcessing - Multiple PSDs
+%
+% This script is an example, with multiple power spectra,
+% of integrating Python FOOOF into a Matlab workflow.
+%
+% It is part of a trio of files that must be run in order:
+% - `MultiPSD_A_*
+% - `MultiPSD_B_*
+% - `MultiPSD_C_*
+%
+% %
+%% LiveFast, LiveSlow, RecFast, RecSlow
+figure; hold on;
+ plot(freqs, avg(1,:,1),'r') 
+% % plot(freqs, avg(2,:,1),'r')
+% % plot(freqs, avg(3,:,1),'r')
+% % plot(freqs, avg(4,:,1),'r')
+plot(freqs, squeeze(mean(avg(:,:,1),1)), 'r','LineWidth',3)
+% 
+% plot(freqs, avg(1,:,2),'b')
+% plot(freqs, avg(2,:,2),'b')
+% plot(freqs, avg(3,:,2),'b')
+% plot(freqs, avg(4,:,2),'b') 
+plot(freqs, squeeze(mean(avg(:,:,2),1)), 'b','LineWidth',3)
+
+% plot(freqs, avg(1,:,3),'g')
+% plot(freqs, avg(2,:,3),'g')
+% plot(freqs, avg(3,:,3),'g')
+% plot(freqs, avg(4,:,3),'g')
+plot(freqs, squeeze(mean(avg(:,:,3),1)), 'g','LineWidth',3)
+
+% plot(freqs, avg(1,:,4),'m')
+% plot(freqs, avg(2,:,4),'m')
+% plot(freqs, avg(3,:,4),'m')
+% plot(freqs, avg(4,:,4),'m')
+plot(freqs, squeeze(mean(avg(:,:,4),1)), 'm','LineWidth',3)
+xlim([.2,45])
+
+
+%% Load Data
+study_path = '/Users/arun/Library/Mobile Documents/com~apple~CloudDocs/Documents/performance study MINDLab/Analysis'; %% Only thing to update!
+participant_table = readtable(strcat(study_path,'/Participants.xlsx'));
+
+conditions = {'LiveFast', 'LiveSlow', 'RecordedFast', 'RecordedSlow'};
+
+%%
+
+for i = 1: size(participant_table,1)
+        participantID = char(participant_table{i,1}); 
+            for j = 1:size(conditions)
+                condition = conditions{j};
+                load(strcat(study_path,'/Participants/', participantID, '/', condition,'/Pwelch.mat'));
+                freqs = matrix(:,1);
+                avgpsd = matrix(:,2);
+                allpsds = matrix(:,3:end);
+                save(strcat(study_path, '/FOOOF_implement/power_spectra'), 'freqs', 'avgpsd');
+                cd( strcat(study_path, '/FOOOF_implement/'))
+                status = system(command)
+                disp()
+                pyrunfile(strcat(study_path, '/FOOOF_implement/fooof_imp.py'));
+                fooof_results = load_fooof_results('fooof_results.mat');
+                ap = aperiodic_params(1) - log10(freqs.^aperiodic_params(2));
+                corrected_avg = log10(avgpsd) - ap;
+                corrected_all = log10(allpsds) - ap;
+                save(strcat(study_path,'/Participants/', participantID, '/', condition,'/FOOFED'), "corrected_all","corrected_avg");
+            end
+
+end
+%% Get participant
+participantID = char(participant_table{4,1});
+condition = 'LiveSlow';
+load(strcat(study_path,'/Participants/', participantID, '/', condition,'/Pwelch.mat'));
+%%
+% Combine into a multi-channel data matrix
+
+freqs = matrix(:,1);
+psds = matrix(:,2);
+
+%% Save Out Data
+
+% Save the power spectra out to mat files
+save(strcat(study_path, '/FOOOF_implement/power_spectra'), 'freqs', 'psds');
+
+%% Load and Analyze FOOOF Results in Matlab - Multiple PSDs
+
+
+%NOW YOU MUST RUN PYTHON SCRIPT
+
+
+pyrunfile("fooof_imp.py");
+
+
+
+
+
+
+
+
+%% Load a specific variable that was saved out to a mat file
+
+% Load exponents
+% exps = load('exps.mat');
+% 
+% % Check out the exponents
+% exps
+
+%% Load in FOOOF results that have been saved out - from mat file
+
+
+% Load the fooof-formated json file, saved out from Python
+fooof_results = load_fooof_results('fooof_results.mat');
+%%
+
+% fit = load_fooof_results('fit_data.json');
+% Check out fooof_results
+% fooof_results
+
+ ap = aperiodic_params(1) - log10(freqs.^aperiodic_params(2));
+ diff = log10(psds) - ap;
+
+
+ %% END OF PARTICIPANT
+ save(strcat(study_path,'/Participants/', participantID, '/FOOFED'), "LiveFast", "LiveSlow", "RecordedFast", "RecordedSlow")
+ 
+ 
+ %% Load in FOOOF results that have been saved out - from mat files
+% 
+% fooof_results = [];
+% for ind = 0:1
+%     cur_result = load(strcat('f_results_', string(ind)));
+%     fooof_results = [fooof_results, cur_result];
+% end
+% 
+% % Check out outputs
+% fooof_results
